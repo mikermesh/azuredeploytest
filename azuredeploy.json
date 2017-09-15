@@ -1,0 +1,1057 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "Prd",
+        "Tst",
+        "Dev",
+        "Poc"
+      ],
+      "defaultValue": "Tst",
+      "metadata": {
+        "description": "A 3 letter designator for environment"
+      }
+    },
+    "region": {
+      "type": "string",
+      "allowedValues": [
+        "Usw",
+        "Use"
+      ],
+      "defaultValue": "Usw",
+      "metadata": {
+        "description": "A 3 letter designator for region"
+      }
+    }
+  },
+  "variables": {
+    "_environmentTitleCase": "[ concat(toUpper(first(parameters('environment'))), toLower(substring(parameters('environment'), 1, sub(length(parameters('environment')), 1)))) ]",
+    "_regionTitleCase": "[ concat(toUpper(first(parameters('region'))), toLower(substring(parameters('region'), 1, sub(length(parameters('region')), 1)))) ]",
+    "_uniqueNameAffix": "[ substring(uniqueString(resourceGroup().id), 0, 4) ]",
+    "authrules_echoProcEhSharedAccessKeyName": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_echoEhName')), '/iothubroutes_', variables('iothubs_gtwyIthName')) ]",
+    "authrules_infoModelEhSharedAccessKeyName": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_infoModelEhName')), '/iothubroutes_', variables('iothubs_gtwyIthName')) ]",
+    "authrules_telemetryEhSharedAccessKeyName": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_telemetryEhName')), '/iothubroutes_', variables('iothubs_gtwyIthName')) ]",
+    "cache_sharedRcName": "[ concat('AbiShrRc', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "databaseaccounts_infoModelCdbName": "[ concat('AbiImStrCdb', variables('_uniqueNameAffix'), variables('_environmentTitleCase')) ]",
+    "eventhubs_echoEhName": "EchoHub",
+    "eventhubs_infoModelEhName": "InfoModelHub",
+    "eventhubs_telemetryEhName": "TelemetryHub",
+    "iothubs_gtwyIthName": "[ concat('AbiGtwyIth', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "namespaces_dataAccessSvcSbName": "[ concat('AbiDaSvcSb', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "namespaces_payloadAdapterEhName": "[ concat('AbiPldAdpEh', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "serverfarms_dataAccessAspName": "[ concat('AbiDaAsp', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "serverfarms_infoModelAspName": "[ concat('AbiImAsp', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "serverfarms_sharedDynamicAspName": "[ concat('AbiShrDynAsp', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "sites_dataAccessSvcAsName": "[ concat('AbiDaSvcAs', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "sites_echoProcFaName": "[ concat('AbiEchoProcFa', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "sites_infoModelProcFaName": "[ concat('AbiImProcFa', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "sites_infoModelSvcAsName": "[ concat('AbiImSvcAs', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "sites_telemetryProcFaName": "[ concat('AbiTelProcFa', variables('_uniqueNameAffix'), variables('_regionTitleCase'), variables('_environmentTitleCase')) ]",
+    "storage_gtwyIthSaName": "[ concat('abigtwysa01', variables('_uniqueNameAffix'), toLower(parameters('region')) , toLower(parameters('environment'))) ]",
+    "storage_sharedFaSaName": "[ concat('abishrfasa01', variables('_uniqueNameAffix'), toLower(parameters('region')), toLower(parameters('environment'))) ]"
+  },
+  "resources": [
+    {
+      "comments": "Shared cache",
+      "type": "Microsoft.Cache/Redis",
+      "name": "[ variables('cache_sharedRcName') ]",
+      "apiVersion": "2016-04-01",
+      "location": "West US",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "redisVersion": "3.2.7",
+        "sku": {
+          "name": "Standard",
+          "family": "C",
+          "capacity": 1
+        },
+        "enableNonSslPort": false,
+        "redisConfiguration": {
+          "maxclients": "1000",
+          "maxmemory-reserved": "50",
+          "maxfragmentationmemory-reserved": "50",
+          "maxmemory-delta": "50"
+        }
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "Data access service bus namespace",
+      "type": "Microsoft.ServiceBus/namespaces",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard",
+        "capacity": 1
+      },
+      "kind": "Messaging",
+      "name": "[ variables('namespaces_dataAccessSvcSbName') ]",
+      "apiVersion": "2015-08-01",
+      "location": "West US",
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "provisioningState": "Succeeded",
+        "status": "Active",
+        "createdAt": "2017-09-13T17:58:42.613Z",
+        "serviceBusEndpoint": "[ concat('https://', variables('namespaces_dataAccessSvcSbName'),'.servicebus.windows.net:443/') ]",
+        "enabled": true,
+        "updatedAt": "2017-09-13T17:59:07.097Z"
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "Backing storage account for iot hub file uploads",
+      "apiVersion": "2016-01-01",
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Standard_RAGRS",
+        "tier": "Standard"
+      },
+      "name": "[ variables('storage_gtwyIthSaName') ]",
+      "location": "[ resourceGroup().location ]",
+      "kind": "Storage",
+      "tags": {},
+      "scale": null,
+      "properties": {},
+      "dependsOn": []
+    },
+    {
+      "comments": "Backing storage account for fucntion app processors listening to event hub",
+      "apiVersion": "2016-01-01",
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "name": "[ variables('storage_sharedFaSaName') ]",
+      "location": "[ resourceGroup().location ]",
+      "kind": "Storage",
+      "tags": {},
+      "scale": null,
+      "properties": {},
+      "dependsOn": []
+    },
+    {
+      "comments": "Data Access app service hosting plan",
+      "apiVersion": "2016-09-01",
+      "type": "Microsoft.Web/serverfarms",
+      "sku": {
+        "name": "S1",
+        "tier": "Standard",
+        "size": "S1",
+        "family": "S",
+        "capacity": 1
+      },
+      "name": "[ variables('serverfarms_dataAccessAspName') ]",
+      "location": "[ resourceGroup().location ]",
+      "kind": "app",
+      "properties": {
+        "name": "[ variables('serverfarms_dataAccessAspName') ]",
+        "workerTierName": null,
+        "adminSiteName": null,
+        "hostingEnvironmentProfile": null,
+        "perSiteScaling": false,
+        "reserved": false,
+        "targetWorkerCount": 0,
+        "targetWorkerSizeId": 0
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "Information model app service hosting plan",
+      "apiVersion": "2016-09-01",
+      "type": "Microsoft.Web/serverfarms",
+      "sku": {
+        "name": "S1",
+        "tier": "Standard",
+        "size": "S1",
+        "family": "S",
+        "capacity": 1
+      },
+      "name": "[ variables('serverfarms_infoModelAspName') ]",
+      "location": "[ resourceGroup().location ]",
+      "kind": "app",
+      "properties": {
+        "name": "[ variables('serverfarms_infoModelAspName') ]",
+        "workerTierName": null,
+        "adminSiteName": null,
+        "hostingEnvironmentProfile": null,
+        "perSiteScaling": false,
+        "reserved": false,
+        "targetWorkerCount": 0,
+        "targetWorkerSizeId": 0
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "Shared dynamic app service hosting plan",
+      "apiVersion": "2015-04-01",
+      "type": "Microsoft.Web/serverfarms",
+      "name": "[ variables('serverfarms_sharedDynamicAspName') ]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "name": "[ variables('serverfarms_sharedDynamicAspName') ]",
+        "computeMode": "Dynamic",
+        "sku": "Dynamic"
+      }
+    },
+    {
+      "comments": "IoT hub for event ingestion",
+      "apiVersion": "2016-02-03",
+      "type": "Microsoft.Devices/IotHubs",
+      "name": "[ variables('iothubs_gtwyIthName') ]",
+      "location": "[ resourceGroup().location ]",
+      "sku": {
+        "name": "S1",
+        "tier": "Standard",
+        "capacity": 1
+      },
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "ipFilterRules": [],
+        "eventHubEndpoints": {
+          "events": {
+            "retentionTimeInDays": 7,
+            "partitionCount": 4,
+            "partitionIds": [
+              "0",
+              "1",
+              "2",
+              "3"
+            ],
+            "path": "[ variables('iothubs_gtwyIthName') ]"
+          },
+          "operationsMonitoringEvents": {
+            "retentionTimeInDays": 7,
+            "partitionCount": 4,
+            "partitionIds": [
+              "0",
+              "1",
+              "2",
+              "3"
+            ],
+            "path": "[ concat(variables('iothubs_gtwyIthName'),'-operationmonitoring') ]"
+          }
+        },
+        "operationsMonitoringProperties": {
+          "events": {
+            "None": "None",
+            "Connections": "None",
+            "DeviceTelemetry": "None",
+            "C2DCommands": "None",
+            "DeviceIdentityOperations": "None",
+            "FileUploadOperations": "None",
+            "Routes": "None"
+          }
+        },
+        "routing": {
+          "endpoints": {
+            "serviceBusQueues": [],
+            "serviceBusTopics": [],
+            "eventHubs": [
+              {
+                "connectionString": "[ listKeys(resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_echoEhName')), concat('iothubroutes_', variables('iothubs_gtwyIthName'))), providers('Microsoft.EventHub', 'namespaces').apiVersions[0]).secondaryConnectionString ]",
+                "name": "[ variables('eventhubs_echoEhName') ]",
+                "subscriptionId": "[ subscription().subscriptionId ]",
+                "resourceGroup": "[ resourceGroup().name ]"
+              },
+              {
+                "connectionString": "[ listKeys(resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_infoModelEhName')), concat('iothubroutes_', variables('iothubs_gtwyIthName'))), providers('Microsoft.EventHub', 'namespaces').apiVersions[0]).secondaryConnectionString ]",
+                "name": "[ variables('eventhubs_infoModelEhName') ]",
+                "subscriptionId": "[ subscription().subscriptionId ]",
+                "resourceGroup": "[ resourceGroup().name ]"
+              },
+              {
+                "connectionString": "[ listKeys(resourceId('Microsoft.EventHub/namespaces/eventhubs/authorizationRules', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_telemetryEhName')), concat('iothubroutes_', variables('iothubs_gtwyIthName'))), providers('Microsoft.EventHub', 'namespaces').apiVersions[0]).secondaryConnectionString ]",
+                "name": "[ variables('eventhubs_TelemetryEhName') ]",
+                "subscriptionId": "[ subscription().subscriptionId ]",
+                "resourceGroup": "[ resourceGroup().name ]"
+              }
+            ]
+          },
+          "routes": [
+            {
+              "name": "[ variables('eventhubs_echoEhName') ]",
+              "source": "DeviceMessages",
+              "condition": "Abi|Hdr|MessageType = 'EchoProc'",
+              "endpointNames": [
+                "[ variables('eventhubs_echoEhName') ]"
+              ],
+              "isEnabled": true
+            },
+            {
+              "name": "[ variables('eventhubs_infoModelEhName') ]",
+              "source": "DeviceMessages",
+              "condition": "Abi|Hdr|MessageType = 'InfoModel'",
+              "endpointNames": [
+                "[ variables('eventhubs_infoModelEhName') ]"
+              ],
+              "isEnabled": true
+            },
+            {
+              "name": "[ variables('eventhubs_telemetryEhName') ]",
+              "source": "DeviceMessages",
+              "condition": "Abi|Hdr|MessageType = 'TimeSeries' OR Abi|Hdr|MessageType = 'Event'",
+              "endpointNames": [
+                "[ variables('eventhubs_telemetryEhName') ]"
+              ],
+              "isEnabled": true
+            },
+            {
+              "name": "Telemetry",
+              "source": "DeviceMessages",
+              "condition": "true",
+              "endpointNames": [
+                "events"
+              ],
+              "isEnabled": true
+            }
+          ],
+          "fallbackRoute": {
+            "name": "$fallback",
+            "source": "DeviceMessages",
+            "condition": "true",
+            "endpointNames": [
+              "events"
+            ],
+            "isEnabled": true
+          }
+        },
+        "storageEndpoints": {
+          "$default": {
+            "sasTtlAsIso8601": "PT1H",
+            "connectionString": "[ concat('DefaultEndpointsProtocol=https;AccountName=', variables('storage_gtwyIthSaName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_gtwyIthSaName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value) ]",
+            "containerName": "uploads"
+          }
+        },
+        "enableFileUploadNotifications": true,
+        "cloudToDevice": {
+          "maxDeliveryCount": 10,
+          "defaultTtlAsIso8601": "PT1H",
+          "feedback": {
+            "lockDurationAsIso8601": "PT1M",
+            "ttlAsIso8601": "PT1H",
+            "maxDeliveryCount": 10
+          }
+        },
+        "features": "None"
+      },
+      "dependsOn": [
+        "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+        "[ resourceId('Microsoft.Storage/storageAccounts', variables('storage_gtwyIthSaName')) ]"
+      ],
+      "resources": [
+        {
+          "comments": "Payload adapter iot hub consumer group.",
+          "apiVersion": "2016-02-03",
+          "type": "Microsoft.Devices/Iothubs/eventhubEndpoints/ConsumerGroups",
+          "name": "[ concat(variables('iothubs_gtwyIthName'), '/events/payloadadapter') ]",
+          "dependsOn": [
+            "[ concat('Microsoft.Devices/Iothubs/', variables('iothubs_gtwyIthName')) ]"
+          ]
+        }
+      ]
+    },
+    {
+      "comments": "Sink for telemetry routed from the iot hub",
+      "apiVersion": "2015-08-01",
+      "type": "Microsoft.EventHub/namespaces",
+      "name": "[ variables('namespaces_payloadAdapterEhName') ]",
+      "location": "[ resourceGroup().location ]",
+      "kind": "EventHub",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard",
+        "capacity": 1
+      },
+      "tags": {},
+      "scale": null,
+      "properties": {
+        "serviceBusEndpoint": "[ concat('https://', variables('namespaces_payloadAdapterEhName'), '.servicebus.windows.net:443/') ]",
+        "enabled": true
+      },
+      "dependsOn": [],
+      "resources": [
+        {
+          "comments": "Event hub shared access key.",
+          "apiVersion": "2015-08-01",
+          "type": "Microsoft.EventHub/namespaces/AuthorizationRules",
+          "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/RootManageSharedAccessKey') ]",
+          "scale": null,
+          "properties": {
+            "rights": [
+              "Listen",
+              "Manage",
+              "Send"
+            ]
+          },
+          "dependsOn": [
+            "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]"
+          ]
+        },
+        {
+          "comments": "Echo event hub",
+          "apiVersion": "2015-08-01",
+          "type": "Microsoft.EventHub/namespaces/eventhubs",
+          "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_echoEhName'))) ]",
+          "location": "[ resourceGroup().location ]",
+          "scale": null,
+          "properties": {
+            "messageRetentionInDays": 1,
+            "partitionCount": 2,
+            "partitionIds": [
+              "0",
+              "1"
+            ]
+          },
+          "dependsOn": [
+            "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]"
+          ],
+          "resources": [
+            {
+              "comments": "Echo event hub shared access key.",
+              "apiVersion": "2015-08-01",
+              "type": "Microsoft.EventHub/namespaces/eventhubs/authorizationRules",
+              "name": "[ variables('authrules_echoProcEhSharedAccessKeyName') ]",
+              "location": "[ resourceGroup().location ]",
+              "scale": null,
+              "properties": {
+                "rights": [
+                  "Send"
+                ]
+              },
+              "dependsOn": [
+                "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+                "[ resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_echoEhName'))) ]"
+              ]
+            },
+            {
+              "comments": "Echo processor function app consumer group",
+              "apiVersion": "2015-08-01",
+              "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+              "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_echoEhName')), '/processor') ]",
+              "location": "[ resourceGroup().location ]",
+              "scale": null,
+              "dependsOn": [
+                "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+                "[ resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_echoEhName'))) ]"
+              ]
+            }
+          ]
+        },
+        {
+          "comments": "Information model event hub",
+          "apiVersion": "2015-08-01",
+          "type": "Microsoft.EventHub/namespaces/eventhubs",
+          "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_infoModelEhName'))) ]",
+          "location": "[ resourceGroup().location ]",
+          "scale": null,
+          "properties": {
+            "messageRetentionInDays": 1,
+            "partitionCount": 2,
+            "partitionIds": [
+              "0",
+              "1"
+            ]
+          },
+          "dependsOn": [
+            "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]"
+          ],
+          "resources": [
+            {
+              "comments": "Information model event hub shared access key.",
+              "apiVersion": "2015-08-01",
+              "type": "Microsoft.EventHub/namespaces/eventhubs/authorizationRules",
+              "name": "[ variables('authrules_infoModelEhSharedAccessKeyName') ]",
+              "location": "[ resourceGroup().location ]",
+              "scale": null,
+              "properties": {
+                "rights": [
+                  "Send"
+                ]
+              },
+              "dependsOn": [
+                "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+                "[ resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_infoModelEhName'))) ]"
+              ]
+            },
+            {
+              "comments": "Information model processor function app consumer group",
+              "apiVersion": "2015-08-01",
+              "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+              "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_infoModelEhName')), '/processor') ]",
+              "location": "[ resourceGroup().location ]",
+              "scale": null,
+              "dependsOn": [
+                "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+                "[ resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_infoModelEhName'))) ]"
+              ]
+            }
+          ]
+        },
+        {
+          "comments": "Telemetry event hub",
+          "apiVersion": "2015-08-01",
+          "type": "Microsoft.EventHub/namespaces/eventhubs",
+          "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_telemetryEhName'))) ]",
+          "location": "[ resourceGroup().location ]",
+          "scale": null,
+          "properties": {
+            "messageRetentionInDays": 1,
+            "partitionCount": 2,
+            "partitionIds": [
+              "0",
+              "1"
+            ]
+          },
+          "dependsOn": [
+            "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]"
+          ],
+          "resources": [
+            {
+              "comments": "Telemetry event hub shared access key.",
+              "apiVersion": "2015-08-01",
+              "type": "Microsoft.EventHub/namespaces/eventhubs/authorizationRules",
+              "name": "[ variables('authrules_telemetryEhSharedAccessKeyName') ]",
+              "location": "[ resourceGroup().location ]",
+              "scale": null,
+              "properties": {
+                "rights": [
+                  "Send"
+                ]
+              },
+              "dependsOn": [
+                "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+                "[ resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_telemetryEhName'))) ]"
+              ]
+            },
+            {
+              "comments": "Hot telemetry processor function app consumer group",
+              "apiVersion": "2015-08-01",
+              "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+              "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_telemetryEhName')), '/processor') ]",
+              "location": "[ resourceGroup().location ]",
+              "scale": null,
+              "dependsOn": [
+                "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+                "[ resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_telemetryEhName'))) ]"
+              ]
+            },
+            {
+              "comments": "Warm telemetry time series insights consumer group",
+              "apiVersion": "2015-08-01",
+              "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+              "name": "[ concat(variables('namespaces_payloadAdapterEhName'), '/', toLower(variables('eventhubs_telemetryEhName')), '/timeseriesinsights') ]",
+              "location": "[ resourceGroup().location ]",
+              "scale": null,
+              "dependsOn": [
+                "[ resourceId('Microsoft.EventHub/namespaces', variables('namespaces_payloadAdapterEhName')) ]",
+                "[ resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('namespaces_payloadAdapterEhName'), toLower(variables('eventhubs_telemetryEhName'))) ]"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comments": "Data access service",
+      "apiVersion": "2016-08-01",
+      "type": "Microsoft.Web/sites",
+      "kind": "WebApp",
+      "name": "[ variables('sites_dataAccessSvcAsName') ]",
+      "location": "[ resourceGroup().location ]",
+      "scale": null,
+      "properties": {
+        "enabled": true,
+        "hostNameSslStates": [
+          {
+            "name": "[ concat(variables('sites_dataAccessSvcAsName'), toLower(variables('sites_dataAccessSvcAsName')), '.azurewebsites.net') ]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Standard"
+          },
+          {
+            "name": "[ concat(variables('sites_dataAccessSvcAsName'), toLower(variables('sites_dataAccessSvcAsName')), '.scm.azurewebsites.net') ]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Repository"
+          }
+        ],
+        "serverFarmId": "[ resourceId('Microsoft.Web/serverfarms', variables('serverfarms_dataAccessAspName')) ]",
+        "reserved": false,
+        "siteConfig": null,
+        "scmSiteAlsoStopped": false,
+        "hostingEnvironmentProfile": null,
+        "clientAffinityEnabled": true,
+        "clientCertEnabled": false,
+        "hostNamesDisabled": false,
+        "containerSize": 0,
+        "dailyMemoryTimeQuota": 0,
+        "cloningInfo": null
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_dataAccessAspName'))]"
+      ],
+      "resources": [
+        {
+          "comments": "Data access service config",
+          "apiVersion": "2016-08-01",
+          "type": "Microsoft.Web/sites/config",
+          "name": "[ concat(variables('sites_dataAccessSvcAsName'), '/', 'web') ]",
+          "location": "[ resourceGroup().location ]",
+          "scale": null,
+          "properties": {
+            "numberOfWorkers": 1,
+            "defaultDocuments": [
+              "Default.htm",
+              "Default.html",
+              "Default.asp",
+              "index.htm",
+              "index.html",
+              "iisstart.htm",
+              "default.aspx",
+              "index.php",
+              "hostingstart.html"
+            ],
+            "netFrameworkVersion": "v4.0",
+            "phpVersion": "5.6",
+            "pythonVersion": "",
+            "nodeVersion": "",
+            "linuxFxVersion": "",
+            "requestTracingEnabled": false,
+            "remoteDebuggingEnabled": false,
+            "remoteDebuggingVersion": null,
+            "httpLoggingEnabled": false,
+            "logsDirectorySizeLimit": 35,
+            "detailedErrorLoggingEnabled": false,
+            "publishingUsername": "[ concat('$', variables('sites_dataAccessSvcAsName')) ]",
+            "publishingPassword": null,
+            "appSettings": null,
+            "metadata": null,
+            "connectionStrings": null,
+            "machineKey": null,
+            "handlerMappings": null,
+            "documentRoot": null,
+            "scmType": "None",
+            "use32BitWorkerProcess": true,
+            "webSocketsEnabled": false,
+            "alwaysOn": false,
+            "javaVersion": null,
+            "javaContainer": null,
+            "javaContainerVersion": null,
+            "appCommandLine": "",
+            "managedPipelineMode": "Integrated",
+            "virtualApplications": [
+              {
+                "virtualPath": "/",
+                "physicalPath": "site\\wwwroot",
+                "preloadEnabled": false,
+                "virtualDirectories": null
+              }
+            ],
+            "winAuthAdminState": 0,
+            "winAuthTenantState": 0,
+            "customAppPoolIdentityAdminState": false,
+            "customAppPoolIdentityTenantState": false,
+            "runtimeADUser": null,
+            "runtimeADUserPassword": null,
+            "loadBalancing": "LeastRequests",
+            "routingRules": [],
+            "experiments": {
+              "rampUpRules": []
+            },
+            "limits": null,
+            "autoHealEnabled": false,
+            "autoHealRules": null,
+            "tracingOptions": null,
+            "vnetName": "",
+            "siteAuthEnabled": false,
+            "siteAuthSettings": {
+              "enabled": null,
+              "unauthenticatedClientAction": null,
+              "tokenStoreEnabled": null,
+              "allowedExternalRedirectUrls": null,
+              "defaultProvider": null,
+              "clientId": null,
+              "clientSecret": null,
+              "issuer": null,
+              "allowedAudiences": null,
+              "additionalLoginParams": null,
+              "isAadAutoProvisioned": false,
+              "googleClientId": null,
+              "googleClientSecret": null,
+              "googleOAuthScopes": null,
+              "facebookAppId": null,
+              "facebookAppSecret": null,
+              "facebookOAuthScopes": null,
+              "twitterConsumerKey": null,
+              "twitterConsumerSecret": null,
+              "microsoftAccountClientId": null,
+              "microsoftAccountClientSecret": null,
+              "microsoftAccountOAuthScopes": null
+            },
+            "cors": null,
+            "push": null,
+            "apiDefinition": null,
+            "autoSwapSlotName": null,
+            "localMySqlEnabled": false,
+            "ipSecurityRestrictions": null
+          },
+          "dependsOn": [
+            "[ resourceId('Microsoft.Web/sites', variables('sites_dataAccessSvcAsName')) ]"
+          ]
+        },
+        {
+          "comments": "Data access service host name bindings",
+          "apiVersion": "2016-08-01",
+          "type": "Microsoft.Web/sites/hostNameBindings",
+          "name": "[ concat(variables('sites_dataAccessSvcAsName'), '/', toLower(variables('sites_dataAccessSvcAsName')), '.azurewebsites.net') ]",
+          "location": "[ resourceGroup().location ]",
+          "scale": null,
+          "properties": {
+            "siteName": "[ variables('sites_dataAccessSvcAsName') ]",
+            "domainId": null,
+            "hostNameType": "Verified"
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('sites_dataAccessSvcAsName'))]"
+          ]
+        }
+      ]
+    },
+    {
+      "comments": "Echo processor",
+      "apiVersion": "2015-08-01",
+      "type": "Microsoft.Web/sites",
+      "name": "[ variables('sites_echoProcFaName') ]",
+      "location": "[resourceGroup().location]",
+      "kind": "functionapp",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_sharedDynamicAspName'))]",
+        "enabled": true,
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "AzureWebJobsDashboard",
+              "value": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]"
+            },
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]"
+            },
+            {
+              "name": "WEBSITE_CONTENTSHARE",
+              "value": "[toLower(variables('sites_echoProcFaName'))]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~1"
+            },
+            {
+              "name": "WEBSITE_NODE_DEFAULT_VERSION",
+              "value": "6.5.0"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_sharedDynamicAspName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName'))]"
+      ]
+    },
+    {
+      "comments": "Information model processor",
+      "apiVersion": "2016-08-01",
+      "type": "Microsoft.Web/sites",
+      "name": "[ variables('sites_infoModelProcFaName') ]",
+      "location": "[ resourceGroup().location ]",
+      "kind": "functionapp",
+      "scale": null,
+      "properties": {
+        "serverFarmId": "[ resourceId('Microsoft.Web/serverfarms', variables('serverfarms_infoModelAspName')) ]",
+        "enabled": true,
+        "hostingEnvironment": "",
+        "clientAffinityEnabled": false,
+        "siteConfig": {
+          "alwaysOn": true
+        }
+      },
+      "dependsOn": [
+        "[ resourceId('Microsoft.Web/serverfarms', variables('serverfarms_infoModelAspName')) ]",
+        "[ resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')) ]"
+      ],
+      "resources": [
+        {
+          "apiVersion": "2016-03-01",
+          "name": "appsettings",
+          "type": "config",
+          "dependsOn": [
+            "[ resourceId('Microsoft.Web/sites', variables('sites_infoModelProcFaName')) ]",
+            "[ resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')) ]"
+          ],
+          "properties": {
+            "numberOfWorkers": 1,
+            "AzureWebJobsStorage": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]",
+            "AzureWebJobsDashboard": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]",
+            "FUNCTIONS_EXTENSION_VERSION": "~1"
+          }
+        }
+      ]
+    },
+    {
+      "comments": "Information model service",
+      "apiVersion": "2016-08-01",
+      "type": "Microsoft.Web/sites",
+      "kind": "WebApp",
+      "name": "[ variables('sites_infoModelSvcAsName') ]",
+      "location": "[ resourceGroup().location ]",
+      "scale": null,
+      "properties": {
+        "enabled": true,
+        "hostNameSslStates": [
+          {
+            "name": "[ concat(variables('sites_infoModelSvcAsName'), toLower(variables('sites_infoModelSvcAsName')), '.azurewebsites.net') ]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Standard"
+          },
+          {
+            "name": "[ concat(variables('sites_infoModelSvcAsName'), toLower(variables('sites_infoModelSvcAsName')), '.scm.azurewebsites.net') ]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Repository"
+          }
+        ],
+        "serverFarmId": "[ resourceId('Microsoft.Web/serverfarms', variables('serverfarms_infoModelAspName')) ]",
+        "reserved": false,
+        "siteConfig": null,
+        "scmSiteAlsoStopped": false,
+        "hostingEnvironmentProfile": null,
+        "clientAffinityEnabled": true,
+        "clientCertEnabled": false,
+        "hostNamesDisabled": false,
+        "containerSize": 0,
+        "dailyMemoryTimeQuota": 0,
+        "cloningInfo": null
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_infoModelAspName'))]"
+      ],
+      "resources": [
+        {
+          "comments": "Information model service config",
+          "apiVersion": "2016-08-01",
+          "type": "Microsoft.Web/sites/config",
+          "name": "[ concat(variables('sites_infoModelSvcAsName'), '/', 'web') ]",
+          "location": "[ resourceGroup().location ]",
+          "scale": null,
+          "properties": {
+            "numberOfWorkers": 1,
+            "defaultDocuments": [
+              "Default.htm",
+              "Default.html",
+              "Default.asp",
+              "index.htm",
+              "index.html",
+              "iisstart.htm",
+              "default.aspx",
+              "index.php",
+              "hostingstart.html"
+            ],
+            "netFrameworkVersion": "v4.0",
+            "phpVersion": "5.6",
+            "pythonVersion": "",
+            "nodeVersion": "",
+            "linuxFxVersion": "",
+            "requestTracingEnabled": false,
+            "remoteDebuggingEnabled": false,
+            "remoteDebuggingVersion": null,
+            "httpLoggingEnabled": false,
+            "logsDirectorySizeLimit": 35,
+            "detailedErrorLoggingEnabled": false,
+            "publishingUsername": "[ concat('$', variables('sites_infoModelSvcAsName')) ]",
+            "publishingPassword": null,
+            "appSettings": null,
+            "metadata": null,
+            "connectionStrings": null,
+            "machineKey": null,
+            "handlerMappings": null,
+            "documentRoot": null,
+            "scmType": "None",
+            "use32BitWorkerProcess": true,
+            "webSocketsEnabled": false,
+            "alwaysOn": false,
+            "javaVersion": null,
+            "javaContainer": null,
+            "javaContainerVersion": null,
+            "appCommandLine": "",
+            "managedPipelineMode": "Integrated",
+            "virtualApplications": [
+              {
+                "virtualPath": "/",
+                "physicalPath": "site\\wwwroot",
+                "preloadEnabled": false,
+                "virtualDirectories": null
+              }
+            ],
+            "winAuthAdminState": 0,
+            "winAuthTenantState": 0,
+            "customAppPoolIdentityAdminState": false,
+            "customAppPoolIdentityTenantState": false,
+            "runtimeADUser": null,
+            "runtimeADUserPassword": null,
+            "loadBalancing": "LeastRequests",
+            "routingRules": [],
+            "experiments": {
+              "rampUpRules": []
+            },
+            "limits": null,
+            "autoHealEnabled": false,
+            "autoHealRules": null,
+            "tracingOptions": null,
+            "vnetName": "",
+            "siteAuthEnabled": false,
+            "siteAuthSettings": {
+              "enabled": null,
+              "unauthenticatedClientAction": null,
+              "tokenStoreEnabled": null,
+              "allowedExternalRedirectUrls": null,
+              "defaultProvider": null,
+              "clientId": null,
+              "clientSecret": null,
+              "issuer": null,
+              "allowedAudiences": null,
+              "additionalLoginParams": null,
+              "isAadAutoProvisioned": false,
+              "googleClientId": null,
+              "googleClientSecret": null,
+              "googleOAuthScopes": null,
+              "facebookAppId": null,
+              "facebookAppSecret": null,
+              "facebookOAuthScopes": null,
+              "twitterConsumerKey": null,
+              "twitterConsumerSecret": null,
+              "microsoftAccountClientId": null,
+              "microsoftAccountClientSecret": null,
+              "microsoftAccountOAuthScopes": null
+            },
+            "cors": null,
+            "push": null,
+            "apiDefinition": null,
+            "autoSwapSlotName": null,
+            "localMySqlEnabled": false,
+            "ipSecurityRestrictions": null
+          },
+          "dependsOn": [
+            "[ resourceId('Microsoft.Web/sites', variables('sites_infoModelSvcAsName')) ]"
+          ]
+        },
+        {
+          "comments": "Information model service host name bindings",
+          "apiVersion": "2016-08-01",
+          "type": "Microsoft.Web/sites/hostNameBindings",
+          "name": "[ concat(variables('sites_infoModelSvcAsName'), '/', toLower(variables('sites_infoModelSvcAsName')), '.azurewebsites.net') ]",
+          "location": "[ resourceGroup().location ]",
+          "scale": null,
+          "properties": {
+            "siteName": "[ variables('sites_infoModelSvcAsName') ]",
+            "domainId": null,
+            "hostNameType": "Verified"
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('sites_infoModelSvcAsName'))]"
+          ]
+        }
+      ]
+    },
+    {
+      "comments": "Generalized from resource: '/subscriptions/221509eb-4607-4a7e-aa2a-6b492f249d36/resourceGroups/AbiImRgUswPoc/providers/Microsoft.DocumentDB/databaseAccounts/abiimcdbuswpoc'.",
+      "apiVersion": "2015-04-08",
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "kind": "GlobalDocumentDB",
+      "name": "[ toLower(variables('databaseaccounts_infoModelCdbName')) ]",
+      "location": "[ resourceGroup().location ]",
+      "tags": {
+        "defaultExperience": "DocumentDB"
+      },
+      "scale": null,
+      "properties": {
+        "databaseAccountOfferType": "Standard",
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "Session",
+          "maxIntervalInSeconds": 5,
+          "maxStalenessPrefix": 100
+        },
+        "name": "[ variables('databaseaccounts_infoModelCdbName') ]"
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "Telemetry processor",
+      "apiVersion": "2015-08-01",
+      "type": "Microsoft.Web/sites",
+      "name": "[ variables('sites_telemetryProcFaName') ]",
+      "location": "[resourceGroup().location]",
+      "kind": "functionapp",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_sharedDynamicAspName'))]",
+        "enabled": true,
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "AzureWebJobsDashboard",
+              "value": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]"
+            },
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[ concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_sharedFaSaName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName')), '2015-05-01-preview').key1,';') ]"
+            },
+            {
+              "name": "WEBSITE_CONTENTSHARE",
+              "value": "[toLower(variables('sites_telemetryProcFaName'))]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~1"
+            },
+            {
+              "name": "WEBSITE_NODE_DEFAULT_VERSION",
+              "value": "6.5.0"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_sharedDynamicAspName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storage_sharedFaSaName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "iotHubConnectionString": {
+      "type": "string",
+      "value": "[ concat('HostName=', variables('iothubs_gtwyIthName'), '.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=', listKeys(resourceId('Microsoft.Devices/IotHubs/IotHubKeys', variables('iothubs_gtwyIthName'), 'iothubowner'), providers('Microsoft.Devices', 'IotHubs').apiVersions[0]).secondaryKey) ]"
+    }
+  }
+}
